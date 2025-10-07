@@ -708,13 +708,19 @@ Bugs can be reported at: https://github.com/EchterAlsFake/Porn_Fetch/issues/
             video_attrs = shared_functions.load_video_attributes(video)
             video_url = video_attrs.get("url") or (video.url if hasattr(video, 'url') else None)
 
-            # Check if video already in library
+            # Check if video already in library AND file exists locally
             if video_url and library.check_duplicate(url=video_url, title=video.title):
-                logger.debug(f"Video already in library, skipping: {video.title}")
-                print(f"{Fore.LIGHTYELLOW_EX}[!]{Fore.RESET} Video already in library, skipping: {video.title}")
-                self.semaphore.release()
-                self.progress.remove_task(task_id)
-                return
+                # Check if local file actually exists
+                from pathlib import Path
+                if Path(output_path).exists():
+                    logger.debug(f"Video already in library, skipping: {video.title}")
+                    print(f"{Fore.LIGHTYELLOW_EX}[!]{Fore.RESET} Video already in library, skipping: {video.title}")
+                    self.semaphore.release()
+                    self.progress.remove_task(task_id)
+                    return
+                else:
+                    logger.debug(f"Video in library but file missing, re-downloading: {video.title}")
+                    print(f"{Fore.LIGHTYELLOW_EX}[!]{Fore.RESET} Video in library but file missing, re-downloading: {video.title}")
 
             # Detect whether this is a byte-based download
             is_byte_download = (
@@ -770,7 +776,9 @@ Bugs can be reported at: https://github.com/EchterAlsFake/Porn_Fetch/issues/
             logger.debug(f"Finished download: {video.title}")
             video_attrs = shared_functions.load_video_attributes(video)
 
-            if conf["Video"]["write_metadata"] == "true":
+            # Only write tags if file exists (download was successful)
+            from pathlib import Path
+            if conf["Video"]["write_metadata"] == "true" and Path(output_path).exists():
                 if remux:
                     shared_functions.write_tags(
                         path=output_path,

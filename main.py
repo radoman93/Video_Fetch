@@ -764,11 +764,15 @@ class DownloadThread(QRunnable):
             video_obj = data_object.get("video")
             video_url = video_obj.url if video_obj and hasattr(video_obj, 'url') else ""
 
-            # Check if video already in library
+            # Check if video already in library AND file exists locally
             if video_url and library.check_duplicate(url=video_url, video_id=str(self.video_id)):
-                self.logger.debug(f"Video already in library, skipping: {self.video.title}")
-                self.signals.download_completed.emit(self.video_id)
-                return
+                # Check if local file actually exists
+                if os.path.isfile(self.output_path):
+                    self.logger.debug(f"Video already in library, skipping: {self.video.title}")
+                    self.signals.download_completed.emit(self.video_id)
+                    return
+                else:
+                    self.logger.debug(f"Video in library but file missing, re-downloading: {self.video.title}")
 
             if os.path.isfile(self.output_path):
                 if self.skip_existing_files:
@@ -821,7 +825,8 @@ class DownloadThread(QRunnable):
             handle_error_gracefully(self, data=video_data.consistent_data, error_message=error, needs_network_log=True)
 
         finally:
-            if self.consistent_data.get("write_metadata"):
+            # Only write tags if file exists (download was successful)
+            if self.consistent_data.get("write_metadata") and os.path.isfile(self.output_path):
                 try:
                     if not FORCE_DISABLE_AV:
                         shared_functions.write_tags(path=self.output_path, data=video_data.data_objects.get(self.video_id))
