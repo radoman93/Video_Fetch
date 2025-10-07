@@ -1982,7 +1982,7 @@ Unless you use your own ELITE proxy, DO NOT REPORT ANY ERRORS THAT OCCUR WHEN YO
                 return
 
         elif self.website_to_search_on == 1:
-            videos = shared_functions.ph_client.search(query)
+            videos = shared_functions.ph_client.search(query).sample()
 
         elif self.website_to_search_on == 2:
             videos = shared_functions.ep_client.search_videos(query, sorting_gay="", sorting_order="",

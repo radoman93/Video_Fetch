@@ -662,7 +662,7 @@ Bugs can be reported at: https://github.com/EchterAlsFake/Porn_Fetch/issues/
         query = input(f"{return_color()}Please enter the search query -->:")
 
         if website == "1":
-            self.iterate_generator(shared_functions.ph_client.search(query))
+            self.iterate_generator(shared_functions.ph_client.search(query).sample())
 
         elif website == "2":
             self.iterate_generator(shared_functions.hq_client.search_videos(query=query))
