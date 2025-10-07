@@ -17,6 +17,7 @@ from base_api.base import BaseCore, setup_logger
 from base_api.modules.config import RuntimeConfig
 from src.backend.CLI_model_feature_addon import *
 import src.backend.shared_functions as shared_functions
+from src.backend.library_manager import get_library_manager
 from base_api.modules.errors import (InvalidProxy, ProxySSLError)
 from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn, TimeElapsedColumn, TimeRemainingColumn
 
@@ -134,7 +135,7 @@ Do you accept the license?  [{Fore.LIGHTBLUE_EX}yes{Fore.RESET},{Fore.LIGHTRED_E
 {return_color()}5) Search a file for Video URLs (only Videos)
 {return_color()}6) Settings
 {return_color()}7) Model update / database feature (experimental)
- 
+
 {return_color()}1337) Enable Proxy (experimental)
 {return_color()}1338) Enable Proxy Kill Switch (very experimental)
 
@@ -534,11 +535,34 @@ Bugs can be reported at: https://github.com/EchterAlsFake/Porn_Fetch/issues/
 
     def iterate_generator(self, generator, auto=False, ignore_errors=False, batch=False, remove_total_bar=False):
         videos = []
-        for idx, video in enumerate(generator):
-            print(f"{idx}) - {video.title}")
-            videos.append(video)
-            if idx + 1 >= self.result_limit:
+        idx = 0
+        skipped_count = 0
+        while idx < self.result_limit:
+            try:
+                video = next(generator)
+                print(f"{idx}) - {video.title}")
+                videos.append(video)
+                idx += 1
+            except StopIteration:
+                # Generator exhausted
+                print(f"{Fore.CYAN}[i] Search exhausted after {idx} videos found ({skipped_count} skipped){Fore.RESET}")
                 break
+            except Exception as e:
+                # Skip videos that are disabled/removed or have other issues
+                skipped_count += 1
+                error_msg = str(e)
+                if "Copyright" in error_msg or "disabled" in error_msg.lower() or "removed" in error_msg.lower():
+                    print(f"{Fore.YELLOW}[!] Skipping video {skipped_count}: {error_msg} - continuing search...{Fore.RESET}")
+                else:
+                    print(f"{Fore.YELLOW}[!] Skipping video {skipped_count}: {error_msg} - continuing search...{Fore.RESET}")
+                # Continue to next video without incrementing idx (still need {idx} valid videos)
+                continue
+
+        if idx > 0:
+            print(f"{Fore.GREEN}[+] Found {idx} video(s) ({skipped_count} skipped){Fore.RESET}")
+        elif idx == 0 and skipped_count > 0:
+            print(f"{Fore.RED}[-] No valid videos found ({skipped_count} skipped){Fore.RESET}")
+            return
 
         selection = "all" if auto else input(
             "\nPlease enter the numbers of videos to download (comma-separated) or 'all' to download all:\n"
@@ -652,7 +676,7 @@ Bugs can be reported at: https://github.com/EchterAlsFake/Porn_Fetch/issues/
         elif website == "5":
             self.iterate_generator(shared_functions.ep_client.search_videos(query, per_page=50,
                                                              sorting_order="", sorting_gay="", sorting_low_quality="",
-                                                             enable_html_scraping=True, page=20))
+                                                             enable_html_scraping=True, page=1))
 
     def process_file(self):
         videos = []
@@ -679,6 +703,19 @@ Bugs can be reported at: https://github.com/EchterAlsFake/Porn_Fetch/issues/
 
     def download(self, video, output_path, task_id, remove_total_bar=False):
         try:
+            # Check library for duplicates
+            library = get_library_manager()
+            video_attrs = shared_functions.load_video_attributes(video)
+            video_url = video_attrs.get("url") or (video.url if hasattr(video, 'url') else None)
+
+            # Check if video already in library
+            if video_url and library.check_duplicate(url=video_url, title=video.title):
+                logger.debug(f"Video already in library, skipping: {video.title}")
+                print(f"{Fore.LIGHTYELLOW_EX}[!]{Fore.RESET} Video already in library, skipping: {video.title}")
+                self.semaphore.release()
+                self.progress.remove_task(task_id)
+                return
+
             # Detect whether this is a byte-based download
             is_byte_download = (
                 isinstance(video, shared_functions.hq_Video)
@@ -731,12 +768,73 @@ Bugs can be reported at: https://github.com/EchterAlsFake/Porn_Fetch/issues/
 
         finally:
             logger.debug(f"Finished download: {video.title}")
+            video_attrs = shared_functions.load_video_attributes(video)
+
             if conf["Video"]["write_metadata"] == "true":
                 if remux:
                     shared_functions.write_tags(
                         path=output_path,
-                        data=shared_functions.load_video_attributes(video))
+                        data=video_attrs)
 
+            # Add video to library
+            try:
+                library = get_library_manager()
+                video_url = video_attrs.get("url") or (video.url if hasattr(video, 'url') else None)
+
+                # Convert tags to list
+                tags_data = video_attrs.get("tags", "")
+                try:
+                    if isinstance(tags_data, str) and tags_data != "Not available":
+                        tags_list = [tag.strip() for tag in tags_data.split(",") if tag.strip()]
+                    elif isinstance(tags_data, list):
+                        # Tags is already a list
+                        tags_list = [str(tag).strip() for tag in tags_data if tag]
+                    else:
+                        tags_list = []
+                except Exception:
+                    tags_list = []
+
+                # Convert actors to list if it's a string
+                actors_data = video_attrs.get("actors", [])
+                try:
+                    if isinstance(actors_data, str) and actors_data != "Not available":
+                        actors_list = [actor.strip() for actor in actors_data.split(",") if actor.strip()]
+                    elif isinstance(actors_data, list):
+                        # Handle list of objects or strings
+                        actors_list = []
+                        for actor in actors_data:
+                            if hasattr(actor, 'name'):
+                                actors_list.append(str(actor.name))
+                            elif isinstance(actor, str):
+                                actors_list.append(actor)
+                            else:
+                                actors_list.append(str(actor))
+                    else:
+                        actors_list = []
+                except Exception:
+                    actors_list = []
+
+                # Convert publish_date to string if it's not already
+                publish_date = video_attrs.get("publish_date")
+                if publish_date and not isinstance(publish_date, str):
+                    publish_date = str(publish_date)
+
+                library.add_video_entry(
+                    url=video_url or "",
+                    video_id=str(hash(video_url)) if video_url else str(hash(video.title)),
+                    title=video_attrs.get("title", "Unknown"),
+                    author=video_attrs.get("author", "Unknown"),
+                    duration=video_attrs.get("duration_seconds"),
+                    tags=tags_list,
+                    actors=actors_list,
+                    file_path=output_path,
+                    thumbnail=video_attrs.get("thumbnail"),
+                    publish_date=publish_date,
+                    quality=self.quality
+                )
+                logger.debug(f"Added video to library: {video.title}")
+            except Exception as e:
+                logger.error(f"Failed to add video to library: {e}")
 
             # Release semaphore and log
             t = next((t for t in self.progress.tasks if t.id == task_id), None)

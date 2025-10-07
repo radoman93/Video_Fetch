@@ -152,6 +152,7 @@ try:
     from src.backend.donation_nag import DonationNag
     from src.backend.license import License, Disclaimer
     from src.backend.config import shared_config
+    from src.backend.library_manager import get_library_manager
     from hqporner_api.api import Sort as hq_Sort
 
     from PySide6.QtCore import (QFile, QTextStream, Signal, QRunnable, QThreadPool, QObject, QSemaphore, Qt, QLocale,
@@ -757,6 +758,18 @@ class DownloadThread(QRunnable):
     def run(self):
         """Run the download in a thread, optimizing for different video sources and modes."""
         try:
+            # Check library for duplicates if enabled
+            library = get_library_manager()
+            data_object = video_data.data_objects.get(self.video_id, {})
+            video_obj = data_object.get("video")
+            video_url = video_obj.url if video_obj and hasattr(video_obj, 'url') else ""
+
+            # Check if video already in library
+            if video_url and library.check_duplicate(url=video_url, video_id=str(self.video_id)):
+                self.logger.debug(f"Video already in library, skipping: {self.video.title}")
+                self.signals.download_completed.emit(self.video_id)
+                return
+
             if os.path.isfile(self.output_path):
                 if self.skip_existing_files:
                     self.logger.debug("The file already exists, skipping...")
@@ -2105,6 +2118,77 @@ Unless you use your own ELITE proxy, DO NOT REPORT ANY ERRORS THAT OCCUR WHEN YO
         self.ui.main_progressbar_total.setValue(0)
         self.ui.main_progressbar_converting.setMaximum(100)
         self.ui.main_progressbar_converting.setValue(0)
+
+        # Add video to library
+        try:
+            library = get_library_manager()
+            data = video_data.data_objects.get(video_id, {})
+            if data:
+                # Extract URL from video object
+                video_obj = data.get("video")
+                video_url = video_obj.url if video_obj and hasattr(video_obj, 'url') else ""
+
+                # Get the output path from the data
+                output_path = data.get("output_path", "")
+
+                # Convert tags to list
+                tags_data = data.get("tags", "")
+                try:
+                    if isinstance(tags_data, str) and tags_data != "Not available":
+                        tags_list = [tag.strip() for tag in tags_data.split(",") if tag.strip()]
+                    elif isinstance(tags_data, list):
+                        # Tags is already a list
+                        tags_list = [str(tag).strip() for tag in tags_data if tag]
+                    else:
+                        tags_list = []
+                except Exception:
+                    tags_list = []
+
+                # Convert actors to list if it's a string
+                actors_data = data.get("actors", [])
+                try:
+                    if isinstance(actors_data, str) and actors_data != "Not available":
+                        actors_list = [actor.strip() for actor in actors_data.split(",") if actor.strip()]
+                    elif isinstance(actors_data, list):
+                        # Handle list of objects or strings
+                        actors_list = []
+                        for actor in actors_data:
+                            if hasattr(actor, 'name'):
+                                actors_list.append(str(actor.name))
+                            elif isinstance(actor, str):
+                                actors_list.append(actor)
+                            else:
+                                actors_list.append(str(actor))
+                    else:
+                        actors_list = []
+                except Exception:
+                    actors_list = []
+
+                # Convert publish_date to string if it's not already
+                publish_date = data.get("publish_date")
+                if publish_date and not isinstance(publish_date, str):
+                    publish_date = str(publish_date)
+
+                # Get the quality setting from consistent_data
+                quality = video_data.consistent_data.get("quality", "Unknown")
+
+                library.add_video_entry(
+                    url=video_url,
+                    video_id=str(video_id),
+                    title=data.get("title", "Unknown"),
+                    author=data.get("author", "Unknown"),
+                    duration=data.get("duration_seconds"),
+                    tags=tags_list,
+                    actors=actors_list,
+                    file_path=output_path,
+                    thumbnail=data.get("thumbnail"),
+                    publish_date=publish_date,
+                    quality=quality
+                )
+                self.logger.debug(f"Added video to library: {data.get('title')}")
+        except Exception as e:
+            self.logger.error(f"Failed to add video to library: {e}")
+
         video_data.clean_dict(video_id)
         self.semaphore.release()
         widgets = self.progress_widgets.pop(video_id, None)

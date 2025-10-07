@@ -95,7 +95,7 @@ sections = ["Setup", "Performance", "Video", "UI", "Sponsoring", "Android"]
 options_setup = ["license_accepted", "install", "update_checks", "internet_checks", "anonymous_mode", "disclaimer_shown", "activate_logging", "first_run_cli"]
 options_performance = ["semaphore", "threading_mode", "workers", "timeout", "retries", "speed_limit", "processing_delay"]
 options_video = ["quality", "output_path", "directory_system", "result_limit", "delay", "skip_existing_files", "model_videos", "supress_errors",
-                 "video_id_as_filename", "direct_download", "write_metadata"]
+                 "video_id_as_filename", "direct_download", "write_metadata", "use_library", "library_path", "skip_library_duplicates"]
 options_ui = ["language", "custom_font", "font_size"]
 options_sponsoring = ["downloaded_videos", "notice_shown"]
 options_android = ["warning_shown"]
@@ -142,6 +142,9 @@ supress_errors = false
 video_id_as_filename = false
 direct_download = false
 write_metadata = true
+use_library = true
+library_path = library.json
+skip_library_duplicates = true
 
 [UI]
 language = system
@@ -279,56 +282,169 @@ def setup_config_file(force=False):
 
 def load_video_attributes(video):
     title = video.title
+    actors = []  # Initialize actors list
+    duration_seconds = None  # Store duration in seconds
 
     if isinstance(video, ph_Video):
         try:
             author = video.author.name
-
         except Exception:
-            author = video.pornstars[0]
+            try:
+                # Try to get first pornstar as fallback
+                pornstars = video.pornstars
+                author = pornstars[0] if pornstars else "Unknown"
+            except Exception:
+                author = "Unknown"
 
-        length = video.duration.seconds / 60
-        tags = ",".join([tag.name for tag in video.tags])
-        publish_date = video.date
-        video.refresh()  # Throws an error otherwise. I have no idea why.
-        thumbnail = video.image.url
+        try:
+            duration_seconds = video.duration.seconds  # Already in seconds
+            length = video.duration.seconds / 60  # Keep for backward compatibility
+        except Exception:
+            duration_seconds = None
+            length = "Not available"
+
+        try:
+            tags = ",".join([tag.name for tag in video.tags])
+        except Exception:
+            tags = "Not available"
+
+        try:
+            actors = video.pornstars if video.pornstars else []
+        except Exception:
+            actors = []
+
+        try:
+            publish_date = video.date
+        except Exception:
+            publish_date = "Not available"
+
+        try:
+            video.refresh()  # Throws an error otherwise. I have no idea why.
+            thumbnail = video.image.url
+        except Exception:
+            thumbnail = "Not available"
 
     elif isinstance(video, xn_Video):
-        author = video.author
-        length = video.length
-        tags = video.tags
-        publish_date = video.publish_date
-        thumbnail = video.thumbnail_url[0]
+        try:
+            author = video.author
+        except Exception:
+            author = "Unknown"
+
+        try:
+            length = video.length
+            # xnxx provides minutes, convert to seconds
+            if isinstance(video.length, (int, float)):
+                duration_seconds = int(video.length * 60)
+        except Exception:
+            length = "Not available"
+            duration_seconds = None
+
+        try:
+            tags = video.tags
+        except Exception:
+            tags = "Not available"
+
+        try:
+            publish_date = video.publish_date
+        except Exception:
+            publish_date = "Not available"
+
+        try:
+            thumbnail = video.thumbnail_url[0] if video.thumbnail_url else None
+        except Exception:
+            thumbnail = "Not available"
 
     elif isinstance(video, xv_Video):
-        author = video.author.name
-        length = video.length
-        tags = video.tags
-        publish_date = video.publish_date
-        thumbnail = video.thumbnail_url
+        try:
+            author = video.author.name
+        except Exception:
+            author = "Unknown"
+
+        try:
+            length = video.length
+            # xvideos length handling - convert to seconds if numeric
+            if isinstance(video.length, (int, float)):
+                duration_seconds = int(video.length * 60)
+        except Exception:
+            length = "Not available"
+            duration_seconds = None
+
+        try:
+            tags = video.tags
+        except Exception:
+            tags = "Not available"
+
+        try:
+            publish_date = video.publish_date
+        except Exception:
+            publish_date = "Not available"
+
+        try:
+            thumbnail = video.thumbnail_url
+        except Exception:
+            thumbnail = "Not available"
 
     elif isinstance(video, ep_Video):
-        author = video.author
-        length = video.length_minutes
-        tags = ",".join([tag for tag in video.tags])
-        publish_date = video.publish_date
-        thumbnail = video.thumbnail
+        try:
+            author = video.author
+        except Exception:
+            author = "Unknown"
+
+        try:
+            length = video.length_minutes
+            # eporner provides minutes, convert to seconds
+            if isinstance(video.length_minutes, (int, float)):
+                duration_seconds = int(video.length_minutes * 60)
+        except Exception:
+            length = "Not available"
+            duration_seconds = None
+
+        try:
+            tags = ",".join([tag for tag in video.tags])
+        except Exception:
+            tags = "Not available"
+
+        try:
+            publish_date = video.publish_date
+        except Exception:
+            publish_date = "Not available"
+
+        try:
+            thumbnail = video.thumbnail
+        except Exception:
+            thumbnail = "Not available"
 
     elif isinstance(video, hq_Video):
-        print("In loading stuff")
         try:
             author = video.pornstars[0]
+            actors = video.pornstars if video.pornstars else []
         except Exception:
-            author = "No pornstars / author"  # This can sometimes happen. Very rarely, but can happen...
+            author = "No pornstars / author"
+            actors = []
 
-        length = video.length
-        tags = ",".join([category for category in video.tags])
-        publish_date = video.publish_date
+        try:
+            length = video.length
+            # hqporner length handling - convert to seconds if numeric
+            if isinstance(video.length, (int, float)):
+                duration_seconds = int(video.length * 60)
+        except Exception:
+            length = "Not available"
+            duration_seconds = None
+
+        try:
+            tags = ",".join([category for category in video.tags])
+        except Exception:
+            tags = "Not available"
+
+        try:
+            publish_date = video.publish_date
+        except Exception:
+            publish_date = "Not available"
+
         try:
             thumbnail = video.get_thumbnails()[0]
-
-        except (TypeError, WeirdError):
-            thumbnail = "Not available" # Expected, it's an error on HQPorners end.
+        except Exception:
+            thumbnail = "Not available"
 
     elif isinstance(video, mv_Video):
         author = "Not available"
@@ -338,29 +454,73 @@ def load_video_attributes(video):
         publish_date = video.publish_date
 
     elif isinstance(video, xh_Video):
-        author = ",".join(video.pornstars)
+        try:
+            author = ",".join(video.pornstars) if video.pornstars else "Unknown"
+            actors = video.pornstars if video.pornstars else []
+        except Exception:
+            author = "Unknown"
+            actors = []
+
         length = "Not available"
         tags = "Not available"
-        thumbnail = video.thumbnail
+
+        try:
+            thumbnail = video.thumbnail
+        except Exception:
+            thumbnail = "Not available"
+
         publish_date = "Not available"
 
     elif isinstance(video, sp_Video):
-        author = video.author
-        length = video.length
-        tags = ",".join(video.tags)
-        thumbnail = video.thumbnail
-        publish_date = video.publish_date
+        try:
+            author = video.author
+        except Exception:
+            author = "Unknown"
+
+        try:
+            length = video.length
+            # spankbang length handling - convert to seconds if numeric
+            if isinstance(video.length, (int, float)):
+                duration_seconds = int(video.length * 60)
+        except Exception:
+            length = "Not available"
+            duration_seconds = None
+
+        try:
+            tags = ",".join(video.tags)
+        except Exception:
+            tags = "Not available"
+
+        try:
+            thumbnail = video.thumbnail
+        except Exception:
+            thumbnail = "Not available"
+
+        try:
+            publish_date = video.publish_date
+        except Exception:
+            publish_date = "Not available"
 
     else:
         raise "Instance Error! Please report this immediately on GitHub!"
 
+    # Parse length for backward compatibility and get seconds if not already set
+    parsed_length = parse_length(length, str(video.url) if hasattr(video, 'url') else None)
+
+    # If duration_seconds not set but we have parsed_length in minutes, convert
+    if duration_seconds is None and isinstance(parsed_length, (int, float)) and parsed_length != "Not available":
+        duration_seconds = int(parsed_length * 60)
+
     data = {
         "title": title,
         "author": author,
-        "length": parse_length(length), # Make sure the video duration is not something like 6.7777777779
+        "length": parsed_length, # Keep for backward compatibility
+        "duration_seconds": duration_seconds,  # New field in seconds
         "tags": tags,
+        "actors": actors,  # New field for actors/pornstars
         "publish_date": publish_date,
         "thumbnail": thumbnail,
+        "url": video.url if hasattr(video, 'url') else None,  # Add URL for library
     }
     logger.debug(f"Loaded video data: {data}")
 
@@ -386,14 +546,18 @@ def write_tags(path, data: dict): # Using core from Porn Fetch to keep proxy sup
 
     logging.debug("Tags: [2/3] - Writing Thumbnail")
 
-    try:
-        content = BaseCore().fetch(url=thumbnail, get_bytes=True)
-        cover = MP4Cover(content, imageformat=MP4Cover.FORMAT_JPEG)
-        audio.tags["covr"] = [cover] # Yes, it needs to be in a list
+    # Only try to fetch thumbnail if it's a valid URL
+    if thumbnail and thumbnail != "Not available" and isinstance(thumbnail, str) and (thumbnail.startswith("http://") or thumbnail.startswith("https://")):
+        try:
+            content = BaseCore().fetch(url=thumbnail, get_bytes=True)
+            cover = MP4Cover(content, imageformat=MP4Cover.FORMAT_JPEG)
+            audio.tags["covr"] = [cover] # Yes, it needs to be in a list
 
-    except Exception as e:
-        logger.error("Could not download / write thumbnail into the metadata tags of the video. Please report the"
-                     f"following error on GitHub: {e} - Image URL: {thumbnail}")
+        except Exception as e:
+            logger.error("Could not download / write thumbnail into the metadata tags of the video. Please report the"
+                         f"following error on GitHub: {e} - Image URL: {thumbnail}")
+    else:
+        logger.debug(f"Skipping thumbnail download - invalid or unavailable URL: {thumbnail}")
 
     audio.save()
     logging.debug("Tags: [3/3] ✔")
