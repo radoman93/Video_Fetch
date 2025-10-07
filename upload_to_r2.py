@@ -2,6 +2,7 @@
 """
 Cloudflare R2 Upload Script for Porn_Fetch Library
 Uploads all videos from library.json to Cloudflare R2 and updates library with cloudflare_url
+Optionally deletes local files after successful upload
 """
 
 import json
@@ -107,7 +108,7 @@ class R2Uploader:
         except Exception as e:
             return False, None, f"Unexpected error: {str(e)}", False
 
-    def process_library(self, library_path, output_library_path=None, skip_existing=True, check_r2_exists=True):
+    def process_library(self, library_path, output_library_path=None, skip_existing=True, check_r2_exists=True, delete_after_upload=False):
         """
         Process entire library and upload videos to R2
 
@@ -116,6 +117,7 @@ class R2Uploader:
             output_library_path: Path to save updated library (defaults to library_path)
             skip_existing: Skip videos that already have cloudflare_url in library
             check_r2_exists: Check if files already exist on R2 before uploading
+            delete_after_upload: Delete local files after successful upload
 
         Returns:
             dict: Statistics about the upload process
@@ -146,6 +148,7 @@ class R2Uploader:
             'already_on_r2': 0,
             'successful': 0,
             'failed': 0,
+            'deleted': 0,
             'errors': []
         }
 
@@ -222,6 +225,19 @@ class R2Uploader:
                                 stats['successful'] += 1
                                 print(f"[{task_num}/{total_videos}] ✅ Uploaded: {video.get('title', 'Unknown')}")
                                 print(f"                URL: {cloudflare_url}")
+
+                                # Delete local file after successful upload if requested
+                                if delete_after_upload:
+                                    try:
+                                        file_path_to_delete = Path(task['file_path'])
+                                        if file_path_to_delete.exists():
+                                            file_path_to_delete.unlink()
+                                            stats['deleted'] += 1
+                                            # Clear file_path in library since file is deleted
+                                            videos[video_idx]['file_path'] = None
+                                            print(f"                🗑️  Deleted local file")
+                                    except Exception as del_error:
+                                        print(f"                ⚠️  Failed to delete local file: {del_error}")
                         else:
                             stats['failed'] += 1
                             stats['errors'].append({
@@ -254,6 +270,7 @@ class R2Uploader:
         print(f"Skipped (in lib):    {stats['skipped']}")
         print(f"Already on R2:       {stats['already_on_r2']}")
         print(f"Newly uploaded:      {stats['successful']}")
+        print(f"Files deleted:       {stats['deleted']}")
         print(f"Failed:              {stats['failed']}")
         print(f"Library updated:     {output_library_path}")
 
@@ -288,6 +305,9 @@ Examples:
 
   # Skip R2 existence check for faster uploads (may create duplicates)
   python upload_to_r2.py --account-id ABC123 --access-key XXX --secret-key YYY --bucket my-bucket --no-check-r2
+
+  # Delete local files after successful upload
+  python upload_to_r2.py --account-id ABC123 --access-key XXX --secret-key YYY --bucket my-bucket --delete-after-upload
         """
     )
 
@@ -316,6 +336,8 @@ Examples:
                         help='Custom R2 public domain (e.g., cdn.example.com)')
     parser.add_argument('--no-check-r2', action='store_true',
                         help='Skip checking if files already exist on R2 (faster but may duplicate)')
+    parser.add_argument('--delete-after-upload', action='store_true',
+                        help='Delete local files after successful upload and update library')
 
     args = parser.parse_args()
 
@@ -340,7 +362,8 @@ Examples:
             library_path=args.library,
             output_library_path=args.output,
             skip_existing=not args.force,
-            check_r2_exists=not args.no_check_r2
+            check_r2_exists=not args.no_check_r2,
+            delete_after_upload=args.delete_after_upload
         )
 
         # Exit with error code if any uploads failed
