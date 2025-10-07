@@ -127,7 +127,8 @@ Do you accept the license?  [{Fore.LIGHTBLUE_EX}yes{Fore.RESET},{Fore.LIGHTRED_E
                 sys.exit()
 
     def menu(self):
-        options = input(f"""
+        try:
+            options = input(f"""
 {return_color()}1) Download a Video
 {return_color()}2) Get videos from a model
 {return_color()}3) Get videos from a PornHub playlist
@@ -142,6 +143,9 @@ Do you accept the license?  [{Fore.LIGHTBLUE_EX}yes{Fore.RESET},{Fore.LIGHTRED_E
 {Fore.LIGHTWHITE_EX}98) Credits
 {Fore.LIGHTRED_EX}99) Exit
 {return_color()}------------------>:""")
+        except EOFError:
+            print("\nExiting...")
+            sys.exit(0)
 
         if options == "1":
             url = input(f"{return_color()}Please the enter video URL -->: {return_color()}")
@@ -506,7 +510,7 @@ Bugs can be reported at: https://github.com/EchterAlsFake/Porn_Fetch/issues/
             logger.debug(f"File exists, skipping: {out_file}")
             print(f"Skipping existing file: {out_file}")
             self.semaphore.release()
-            self.menu()
+            return
 
         # Create per-video task
         task_id = self.progress.add_task(
