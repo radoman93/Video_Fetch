@@ -11,6 +11,7 @@ import sys
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from urllib.parse import quote
 import boto3
 from botocore.exceptions import ClientError
 from botocore.config import Config
@@ -68,7 +69,7 @@ class R2Uploader:
 
     def upload_file(self, file_path, object_key, check_exists=True):
         """
-        Upload a single file to R2
+        Upload a single file to R2 and generate properly URL-encoded public URL
 
         Args:
             file_path: Local file path
@@ -77,6 +78,10 @@ class R2Uploader:
 
         Returns:
             tuple: (success: bool, cloudflare_url: str, error: str, already_exists: bool)
+
+        Note:
+            The cloudflare_url returned is properly URL-encoded to handle spaces,
+            emojis, special characters, and non-ASCII characters.
         """
         try:
             file_path = Path(file_path)
@@ -87,7 +92,9 @@ class R2Uploader:
 
             # Check if already exists on R2
             if check_exists and self.object_exists(object_key):
-                cloudflare_url = f"{self.public_url_base}/{object_key}"
+                # Generate properly URL-encoded public URL
+                encoded_key = quote(object_key, safe='')
+                cloudflare_url = f"{self.public_url_base}/{encoded_key}"
                 return True, cloudflare_url, None, True
 
             # Upload file
@@ -98,8 +105,9 @@ class R2Uploader:
                 ExtraArgs={'ContentType': 'video/mp4'}
             )
 
-            # Generate public URL
-            cloudflare_url = f"{self.public_url_base}/{object_key}"
+            # Generate properly URL-encoded public URL
+            encoded_key = quote(object_key, safe='')
+            cloudflare_url = f"{self.public_url_base}/{encoded_key}"
 
             return True, cloudflare_url, None, False
 
@@ -178,7 +186,8 @@ class R2Uploader:
 
             # Generate object key (just filename, no prefix)
             filename = file_path_obj.name
-            object_key = filename
+            # Strip any leading slashes to prevent double slashes in URLs
+            object_key = filename.lstrip('/')
 
             upload_tasks.append({
                 'video': video,

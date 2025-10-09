@@ -12,7 +12,10 @@
       "Bash(git pull:*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(npx @angular/cli new:*)"
+      "Bash(npx @angular/cli new:*)",
+      "Bash(dir)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

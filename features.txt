@@ -1,0 +1,2 @@
+I know which ones perform better. There's a counter every time a video is watched, so I can sort them by most watched. I don't do anything with the non-performing ones because sometimes it happens that a video that had no views for years suddenly starts ranking for some reason.
+

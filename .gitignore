@@ -1,3 +1,118 @@
+# Video files
 *.mp4
-.idea/
+*.avi
+*.mkv
+*.webm
+*.flv
+
+.claude
+.idea
+
+
+# Project-specific data files
 library.json
+library.json.backup
+not_updated_videos.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller / Nuitka
+*.manifest
+*.spec.bak
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django/Flask stuff (if applicable)
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS-specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Trash-*
+nul
+
+# Qt/PySide6
+*.qmlc
+*.jsc
+*.qm
+.qmake.stash
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+*.bak
+
+# FFmpeg outputs and temp files
+*.ts
+*.part
+
+# Config overrides (keep config.ini template tracked, ignore user configs)
+config.local.ini
