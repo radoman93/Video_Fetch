@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -11,17 +11,9 @@ interface VideoPlayerProps {
 export function VideoPlayer({ videoUrl, thumbnailUrl, onPlay }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handlePlay = () => {
-      onPlay?.();
-    };
-
-    video.addEventListener('play', handlePlay);
-    return () => video.removeEventListener('play', handlePlay);
-  }, [onPlay]);
+  const handlePlay = () => {
+    onPlay?.();
+  };
 
   return (
     <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
@@ -29,7 +21,9 @@ export function VideoPlayer({ videoUrl, thumbnailUrl, onPlay }: VideoPlayerProps
         ref={videoRef}
         className="w-full h-full"
         controls
+        controlsList="nodownload"
         poster={thumbnailUrl}
+        onPlay={handlePlay}
         preload="metadata"
       >
         <source src={videoUrl} type="video/mp4" />

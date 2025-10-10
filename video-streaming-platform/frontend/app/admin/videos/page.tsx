@@ -489,6 +489,12 @@ export default function ManageVideos() {
                         </div>
                         <div className="flex space-x-2">
                           <button
+                            onClick={() => router.push(`/admin/videos/${video.id}/edit`)}
+                            className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button
                             onClick={() => router.push(`/videos/${video.id}`)}
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs"
                           >

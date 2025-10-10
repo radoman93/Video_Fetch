@@ -23,7 +23,7 @@ export default function VideoPage() {
   // Fetch related videos
   const { data: relatedVideos, isLoading: relatedLoading } = useQuery({
     queryKey: ['related', videoId],
-    queryFn: () => api.videos.getRelated(videoId, 12),
+    queryFn: () => api.videos.getRelated(videoId, 7),
     enabled: !!video,
   });
 
