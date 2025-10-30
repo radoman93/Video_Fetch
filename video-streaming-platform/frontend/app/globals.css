@@ -3,32 +3,90 @@
 @tailwind utilities;
 
 :root {
-  --primary: #ff1493;
+  /* Neon color palette */
+  --neon-pink: #ff1493;
+  --neon-purple: #9d4edd;
+  --neon-cyan: #06b6d4;
+  --neon-blue: #3b82f6;
+  
+  /* Dark theme colors */
+  --dark-navy: #0a0e27;
+  --dark-navy-light: #0f0f23;
+  --dark-purple: #1a0b2e;
   --dark-100: #2a2a2a;
   --dark-200: #1a1a1a;
   --dark-300: #0a0a0a;
+  
+  /* Glow effects */
+  --glow-pink: 0 0 20px rgba(255, 20, 147, 0.5), 0 0 40px rgba(255, 20, 147, 0.3);
+  --glow-purple: 0 0 20px rgba(157, 78, 221, 0.5), 0 0 40px rgba(157, 78, 221, 0.3);
+  --glow-cyan: 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.3);
 }
 
 body {
-  @apply bg-dark-300 text-white;
+  @apply bg-dark-navy text-white;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* Custom scrollbar */
+/* Animated tech grid background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 200%;
+  background-image: 
+    linear-gradient(rgba(157, 78, 221, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(157, 78, 221, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: grid-float 20s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Subtle glow orbs in corners */
+body::after {
+  content: '';
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 20, 147, 0.1) 0%, transparent 70%);
+  top: -300px;
+  right: -300px;
+  pointer-events: none;
+  z-index: 0;
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+/* Main content wrapper */
+main, header {
+  position: relative;
+  z-index: 1;
+}
+
+/* Custom scrollbar with neon theme */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-dark-300;
+  background: var(--dark-navy);
+  border-left: 1px solid rgba(157, 78, 221, 0.2);
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-dark-100 rounded-lg;
+  background: linear-gradient(180deg, var(--neon-purple) 0%, var(--neon-pink) 100%);
+  border-radius: 6px;
+  border: 2px solid var(--dark-navy);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary;
+  background: linear-gradient(180deg, var(--neon-cyan) 0%, var(--neon-pink) 100%);
+  box-shadow: var(--glow-cyan);
 }
 
 /* Video player styles */
@@ -36,38 +94,207 @@ video {
   @apply w-full h-full object-contain bg-black;
 }
 
-/* Link hover effect */
+/* Link hover effect with neon glow */
 a {
-  @apply transition-colors duration-200;
+  @apply transition-all duration-300;
 }
 
 a:hover {
-  @apply text-primary;
+  @apply text-neon-pink;
+  text-shadow: 0 0 10px rgba(255, 20, 147, 0.5);
 }
 
-/* Button styles */
+/* Button styles with neon glow */
 .btn-primary {
-  @apply bg-primary hover:bg-pink-600 text-white font-bold py-2 px-4 rounded transition-colors;
+  @apply bg-neon-pink hover:bg-pink-600 text-white font-bold py-2 px-4 rounded transition-all duration-300;
+  box-shadow: 0 0 15px rgba(255, 20, 147, 0.4);
+}
+
+.btn-primary:hover {
+  box-shadow: var(--glow-pink);
+  transform: translateY(-2px);
 }
 
 .btn-secondary {
-  @apply bg-dark-100 hover:bg-dark-200 text-white font-bold py-2 px-4 rounded transition-colors;
+  @apply bg-dark-100 hover:bg-dark-200 text-white font-bold py-2 px-4 rounded transition-all duration-300;
+  border: 1px solid rgba(157, 78, 221, 0.3);
 }
 
-/* Card styles */
+.btn-secondary:hover {
+  border-color: var(--neon-purple);
+  box-shadow: var(--glow-purple);
+  transform: translateY(-2px);
+}
+
+/* Card styles with neon border on hover */
 .card {
-  @apply bg-dark-200 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow;
+  @apply bg-dark-200 rounded-lg overflow-hidden shadow-lg transition-all duration-300;
+  border: 1px solid rgba(157, 78, 221, 0.2);
 }
 
-/* Badge styles */
+.card:hover {
+  border-color: var(--neon-pink);
+  box-shadow: var(--glow-pink);
+  transform: translateY(-4px);
+}
+
+/* Badge styles with neon colors */
 .badge {
   @apply inline-block px-2 py-1 text-xs font-semibold rounded;
 }
 
 .badge-hd {
-  @apply bg-primary text-white;
+  @apply bg-neon-pink text-white;
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.5);
 }
 
 .badge-featured {
-  @apply bg-yellow-500 text-black;
+  @apply bg-neon-cyan text-white;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
+/* Gradient text effect */
+.gradient-text {
+  background: linear-gradient(90deg, var(--neon-pink) 0%, var(--neon-purple) 50%, var(--neon-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 3s ease infinite;
+  background-size: 200% 100%;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Input fields with neon focus */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  @apply transition-all duration-300;
+  border: 1px solid rgba(157, 78, 221, 0.3);
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow-cyan);
+  outline: none;
+}
+
+/* Loading spinner with neon glow */
+.loading-spinner {
+  border: 3px solid rgba(157, 78, 221, 0.2);
+  border-top-color: var(--neon-pink);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Subtle scan line effect (very subtle, won't distract) */
+.scan-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  opacity: 0.1;
+  animation: scan 8s linear infinite;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Neon border animation for cards */
+@keyframes neon-pulse {
+  0%, 100% {
+    border-color: rgba(255, 20, 147, 0.3);
+    box-shadow: 0 0 10px rgba(255, 20, 147, 0.2);
+  }
+  50% {
+    border-color: rgba(255, 20, 147, 0.6);
+    box-shadow: var(--glow-pink);
+  }
+}
+
+.neon-border-animated {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* Tech accent lines */
+.tech-accent {
+  position: relative;
+}
+
+.tech-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, var(--neon-cyan), transparent);
+}
+
+.tech-accent::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, var(--neon-purple), transparent);
+}
+
+/* Glow on hover for interactive elements */
+.glow-on-hover {
+  transition: all 0.3s ease;
+}
+
+.glow-on-hover:hover {
+  filter: drop-shadow(0 0 10px var(--neon-pink));
+}
+
+/* Neon divider */
+.neon-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--neon-pink), var(--neon-purple), var(--neon-cyan), transparent);
+  margin: 2rem 0;
+  opacity: 0.5;
+}
+
+/* Shimmer effect for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 20, 147, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
 }

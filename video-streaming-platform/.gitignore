@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+.env*.local
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# PM2
+.pm2/
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Cloudflare
+.wrangler/
+wrangler.toml.bak
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# GitHub Actions self-hosted runner
+_work/
+_diag/
+_config/

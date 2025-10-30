@@ -1,14 +1,22 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Header } from '@/components/Header';
 import { VideoGrid } from '@/components/VideoGrid';
+import { VideoGridWithAds } from '@/components/VideoGridWithAds';
+import { Pagination } from '@/components/Pagination';
+import {
+  ExoClickPopunder,
+  ResponsiveBanner,
+  AdSpacer,
+} from '@/components/ads';
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const query = searchParams.get('q') || '';
   const page = parseInt(searchParams.get('page') || '1');
 
@@ -23,6 +31,12 @@ export default function SearchPage() {
     queryFn: () => api.search.global(query),
     enabled: query.length > 0,
   });
+
+  const goToPage = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', newPage.toString());
+    router.push(`/search?${params.toString()}`);
+  };
 
   if (!query) {
     return (
@@ -44,6 +58,13 @@ export default function SearchPage() {
     <>
       <Header />
       <main className="container mx-auto px-4 py-8">
+        {/* Popunder Ad - Triggers on page entry */}
+        <ExoClickPopunder trigger="immediate" />
+
+        {/* Top Banner Ad (728x90 Leaderboard) */}
+        <ResponsiveBanner className="mb-6" />
+        <AdSpacer size="md" />
+
         {/* Search Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
@@ -134,7 +155,7 @@ export default function SearchPage() {
         {/* Video Results */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Videos</h2>
-          <VideoGrid videos={data?.videos || []} loading={isLoading} />
+          <VideoGridWithAds videos={data?.videos || []} loading={isLoading} adFrequency={5} />
 
           {/* No Results */}
           {!isLoading && data && data.videos.length === 0 && (
@@ -146,38 +167,25 @@ export default function SearchPage() {
           )}
 
           {/* Pagination */}
-          {data && data.total > data.page_size && (
-            <div className="mt-8 flex justify-center items-center gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => {
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.set('page', (page - 1).toString());
-                  window.location.href = `/search?${params.toString()}`;
-                }}
-                className="px-4 py-2 bg-gray-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
-              >
-                Previous
-              </button>
-
-              <span className="px-4 py-2">
-                Page {page} of {Math.ceil(data.total / data.page_size)}
-              </span>
-
-              <button
-                disabled={page >= Math.ceil(data.total / data.page_size)}
-                onClick={() => {
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.set('page', (page + 1).toString());
-                  window.location.href = `/search?${params.toString()}`;
-                }}
-                className="px-4 py-2 bg-gray-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
-              >
-                Next
-              </button>
-            </div>
+          {data && data.total > 0 && (
+            <>
+              <div className="mt-6 text-center text-gray-400">
+                Showing {data.videos.length} of {data.total} videos
+              </div>
+              <Pagination
+                currentPage={page}
+                totalPages={Math.ceil(data.total / data.page_size)}
+                hasNext={page < Math.ceil(data.total / data.page_size)}
+                hasPrev={page > 1}
+                onPageChange={goToPage}
+              />
+            </>
           )}
         </div>
+
+        {/* Bottom Banner Ad (728x90 Leaderboard) */}
+        <AdSpacer size="lg" />
+        <ResponsiveBanner className="mt-8" />
       </main>
     </>
   );

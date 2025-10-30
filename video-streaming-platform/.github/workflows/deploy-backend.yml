@@ -1,0 +1,74 @@
+name: Deploy Backend to Windows VPS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Windows Server
+    runs-on: self-hosted
+
+    defaults:
+      run:
+        working-directory: ./backend
+        shell: powershell
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run deployment script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PORT: ${{ secrets.PORT }}
+          NODE_ENV: production
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+        run: |
+          # Create .env file from secrets
+          @"
+          SUPABASE_URL=$env:SUPABASE_URL
+          SUPABASE_SERVICE_KEY=$env:SUPABASE_SERVICE_KEY
+          PORT=$env:PORT
+          NODE_ENV=production
+          CORS_ORIGIN=$env:CORS_ORIGIN
+          "@ | Out-File -FilePath .env -Encoding utf8
+
+          # Restart PM2 process
+          npm install -g pm2
+          pm2 restart ecosystem.config.js --env production
+          pm2 save
+
+      - name: Health check
+        run: |
+          Start-Sleep -Seconds 5
+          $response = Invoke-WebRequest -Uri "http://localhost:$env:PORT/api/health" -UseBasicParsing
+          if ($response.StatusCode -eq 200) {
+            Write-Host "Backend health check passed"
+          } else {
+            Write-Error "Backend health check failed"
+            exit 1
+          }
+        env:
+          PORT: ${{ secrets.PORT }}
+
+      - name: Deployment notification
+        if: success()
+        run: Write-Host "Backend deployed successfully to Windows VPS"

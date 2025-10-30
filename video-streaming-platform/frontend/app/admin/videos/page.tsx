@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { adminVideosAPI, AdminVideo } from '@/lib/admin-api';
 
 export default function ManageVideos() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const hasLoadedRef = useRef(false);
+  const initialAuthCheckRef = useRef(false);
 
   // State
   const [videos, setVideos] = useState<AdminVideo[]>([]);
@@ -20,23 +23,34 @@ export default function ManageVideos() {
   const [qualityFilter, setQualityFilter] = useState('');
   const [featuredFilter, setFeaturedFilter] = useState<boolean | ''>('');
   const [publishedFilter, setPublishedFilter] = useState<boolean | ''>('');
+  const [brokenThumbnailFilter, setBrokenThumbnailFilter] = useState(false);
   const [sortBy, setSortBy] = useState<'created_at' | 'view_count' | 'like_count' | 'title'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalVideos, setTotalVideos] = useState(0);
+  const [checkingThumbnails, setCheckingThumbnails] = useState(false);
 
-  // Load data
+  // Wait for auth to be ready ONCE, then load data
   useEffect(() => {
-    if (!authLoading && !user) {
+    // Only check auth once at mount
+    if (initialAuthCheckRef.current) return;
+
+    if (authLoading) return; // Wait for auth to finish loading
+
+    initialAuthCheckRef.current = true;
+
+    if (!user) {
       setError('Please sign in to access the admin panel');
+      setLoading(false);
       return;
     }
 
-    if (!authLoading && user) {
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
       loadData();
     }
-  }, [authLoading, user, searchTerm, qualityFilter, featuredFilter, publishedFilter, sortBy, sortOrder, currentPage]);
+  }, [authLoading, user]);
 
   const loadData = async () => {
     try {
@@ -54,6 +68,7 @@ export default function ManageVideos() {
       if (qualityFilter) filters.quality = qualityFilter;
       if (featuredFilter !== '') filters.is_featured = featuredFilter;
       if (publishedFilter !== '') filters.is_published = publishedFilter;
+      if (brokenThumbnailFilter) filters.broken_thumbnail = true;
 
       const data = await adminVideosAPI.getVideos(filters);
       setVideos(data.videos);
@@ -65,6 +80,11 @@ export default function ManageVideos() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setCurrentPage(1);
+    loadData();
   };
 
   const handleToggleFeatured = async (videoId: string, currentValue: boolean) => {
@@ -167,6 +187,23 @@ export default function ManageVideos() {
     }
   };
 
+  const handleCheckBrokenThumbnails = async () => {
+    if (!confirm('This will check all thumbnail URLs for 404 errors. This may take a while. Continue?')) {
+      return;
+    }
+
+    try {
+      setCheckingThumbnails(true);
+      const result = await adminVideosAPI.checkBrokenThumbnails();
+      alert(`Checked ${result.checked} videos.\n${result.broken} newly marked as broken.\n${result.fixed} newly marked as fixed.`);
+      loadData(); // Reload to show updated status
+    } catch (err: any) {
+      alert(`Failed to check thumbnails: ${err.message}`);
+    } finally {
+      setCheckingThumbnails(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -209,7 +246,7 @@ export default function ManageVideos() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Video Management</h1>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Manage videos, visibility, and featured content
+                Manage videos, visibility, and featured content • Change filters and click Refresh to apply
               </p>
             </div>
             <div className="flex space-x-3">
@@ -220,7 +257,14 @@ export default function ManageVideos() {
                 ← Back to Dashboard
               </button>
               <button
-                onClick={loadData}
+                onClick={handleCheckBrokenThumbnails}
+                disabled={checkingThumbnails}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {checkingThumbnails ? '⏳ Checking...' : '🔍 Check Broken Thumbnails'}
+              </button>
+              <button
+                onClick={handleRefresh}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
                 🔄 Refresh
@@ -285,10 +329,7 @@ export default function ManageVideos() {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by title..."
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
               />
@@ -299,10 +340,7 @@ export default function ManageVideos() {
               </label>
               <select
                 value={qualityFilter}
-                onChange={(e) => {
-                  setQualityFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setQualityFilter(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">All Qualities</option>
@@ -318,10 +356,7 @@ export default function ManageVideos() {
               </label>
               <select
                 value={featuredFilter === '' ? '' : featuredFilter ? 'true' : 'false'}
-                onChange={(e) => {
-                  setFeaturedFilter(e.target.value === '' ? '' : e.target.value === 'true');
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setFeaturedFilter(e.target.value === '' ? '' : e.target.value === 'true')}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">All</option>
@@ -335,10 +370,7 @@ export default function ManageVideos() {
               </label>
               <select
                 value={publishedFilter === '' ? '' : publishedFilter ? 'true' : 'false'}
-                onChange={(e) => {
-                  setPublishedFilter(e.target.value === '' ? '' : e.target.value === 'true');
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setPublishedFilter(e.target.value === '' ? '' : e.target.value === 'true')}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">All</option>
@@ -346,6 +378,23 @@ export default function ManageVideos() {
                 <option value="false">Not Published</option>
               </select>
             </div>
+          </div>
+          <div className="mt-4 bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={brokenThumbnailFilter}
+                onChange={(e) => setBrokenThumbnailFilter(e.target.checked)}
+                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-4 h-4"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Show only videos with broken thumbnails (404 errors)
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 ml-6">
+              Click <strong>"🔍 Check Broken Thumbnails"</strong> button above to scan all videos and detect 404 errors.
+              Then use this filter to show only videos with broken thumbnails.
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
@@ -427,12 +476,29 @@ export default function ManageVideos() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
-                          {video.thumbnail_url && (
-                            <img
-                              src={video.thumbnail_url}
-                              alt={video.title}
-                              className="w-20 h-12 object-cover rounded"
-                            />
+                          {video.thumbnail_url ? (
+                            <div className="relative w-20 h-12 flex-shrink-0">
+                              <img
+                                src={video.thumbnail_url}
+                                alt={video.title}
+                                className="w-20 h-12 object-cover rounded"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent && !parent.querySelector('.broken-thumb-indicator')) {
+                                    const indicator = document.createElement('div');
+                                    indicator.className = 'broken-thumb-indicator w-20 h-12 bg-red-100 dark:bg-red-900 border-2 border-red-500 rounded flex items-center justify-center';
+                                    indicator.innerHTML = '<span class="text-red-600 dark:text-red-300 text-xs font-bold">❌ BROKEN</span>';
+                                    parent.appendChild(indicator);
+                                  }
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-20 h-12 bg-gray-200 dark:bg-gray-700 border-2 border-gray-400 dark:border-gray-600 rounded flex items-center justify-center flex-shrink-0">
+                              <span className="text-gray-500 dark:text-gray-400 text-xs font-bold">NO IMAGE</span>
+                            </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
@@ -488,18 +554,18 @@ export default function ManageVideos() {
                           </button>
                         </div>
                         <div className="flex space-x-2">
-                          <button
-                            onClick={() => router.push(`/admin/videos/${video.id}/edit`)}
+                          <Link
+                            href={`/admin/videos/${video.id}/edit`}
                             className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 text-xs"
                           >
                             Edit
-                          </button>
-                          <button
-                            onClick={() => router.push(`/videos/${video.id}`)}
+                          </Link>
+                          <Link
+                            href={`/videos/${video.id}`}
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs"
                           >
                             View
-                          </button>
+                          </Link>
                           <button
                             onClick={() => handleDeleteVideo(video.id)}
                             className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-xs"
@@ -523,14 +589,26 @@ export default function ManageVideos() {
               </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  onClick={() => {
+                    const newPage = Math.max(1, currentPage - 1);
+                    if (newPage !== currentPage) {
+                      setCurrentPage(newPage);
+                      setTimeout(() => loadData(), 0);
+                    }
+                  }}
                   disabled={currentPage === 1}
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => {
+                    const newPage = Math.min(totalPages, currentPage + 1);
+                    if (newPage !== currentPage) {
+                      setCurrentPage(newPage);
+                      setTimeout(() => loadData(), 0);
+                    }
+                  }}
                   disabled={currentPage === totalPages}
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

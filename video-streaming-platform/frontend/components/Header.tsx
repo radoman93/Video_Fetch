@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
@@ -24,12 +25,21 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-dark-200 border-b border-dark-100 shadow-lg">
+    <header className="sticky top-0 z-50 bg-dark-navy/95 border-b border-neon-purple/30 shadow-glow-purple backdrop-blur-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" className="text-2xl font-bold text-primary flex-shrink-0">
-            VideoHub
+          <Link href="/" className="flex items-center gap-3 text-2xl font-bold text-primary flex-shrink-0 hover:opacity-90 transition-all duration-300 glow-on-hover group">
+            <div className="relative w-12 h-12 rounded-lg overflow-hidden group-hover:shadow-glow-pink transition-all duration-300">
+              <Image
+                src="/images/logo.png"
+                alt="FootVault Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <span className="gradient-text">FootVault</span>
           </Link>
 
           {/* Search Bar */}
@@ -40,11 +50,11 @@ export function Header() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search videos..."
-                className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg focus:outline-none focus:border-primary text-white"
+                className="w-full px-4 py-2 bg-dark-300 border border-neon-purple/30 rounded-lg focus:outline-none focus:border-neon-cyan text-white transition-all duration-300 focus:shadow-glow-cyan"
               />
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-neon-cyan transition-all duration-300"
               >
                 <svg
                   className="w-5 h-5"
@@ -67,31 +77,25 @@ export function Header() {
           <nav className="hidden lg:flex items-center gap-6 flex-shrink-0">
             <Link
               href="/"
-              className="text-gray-300 hover:text-primary transition-colors"
+              className="text-gray-300 hover:text-neon-pink transition-all duration-300"
             >
               Home
             </Link>
             <Link
-              href="/videos"
-              className="text-gray-300 hover:text-primary transition-colors"
-            >
-              Videos
-            </Link>
-            <Link
               href="/authors"
-              className="text-gray-300 hover:text-primary transition-colors"
+              className="text-gray-300 hover:text-neon-purple transition-all duration-300"
             >
               Authors
             </Link>
             <Link
               href="/categories"
-              className="text-gray-300 hover:text-primary transition-colors"
+              className="text-gray-300 hover:text-neon-cyan transition-all duration-300"
             >
               Categories
             </Link>
             <Link
               href="/tags"
-              className="text-gray-300 hover:text-primary transition-colors"
+              className="text-gray-300 hover:text-neon-blue transition-all duration-300"
             >
               Tags
             </Link>
@@ -118,7 +122,7 @@ export function Header() {
                       setAuthMode('signup');
                       setAuthModalOpen(true);
                     }}
-                    className="px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg font-semibold transition-colors"
+                    className="px-4 py-2 bg-neon-pink hover:bg-pink-600 rounded-lg font-semibold transition-all duration-300 shadow-glow-pink hover:shadow-glow-pink-lg"
                   >
                     Sign Up
                   </button>
@@ -130,7 +134,7 @@ export function Header() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden text-white"
+            className="lg:hidden text-white hover:text-neon-pink transition-colors"
           >
             <svg
               className="w-6 h-6"
@@ -165,11 +169,11 @@ export function Header() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search videos..."
-              className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg focus:outline-none focus:border-primary text-white"
+              className="w-full px-4 py-2 bg-dark-300 border border-neon-purple/30 rounded-lg focus:outline-none focus:border-neon-cyan text-white transition-all duration-300 focus:shadow-glow-cyan"
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-neon-cyan transition-colors"
             >
               <svg
                 className="w-5 h-5"
@@ -193,35 +197,28 @@ export function Header() {
           <nav className="lg:hidden mt-4 pb-4 flex flex-col gap-3">
             <Link
               href="/"
-              className="text-gray-300 hover:text-primary transition-colors py-2"
+              className="text-gray-300 hover:text-neon-pink transition-colors py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
             </Link>
             <Link
-              href="/videos"
-              className="text-gray-300 hover:text-primary transition-colors py-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Videos
-            </Link>
-            <Link
               href="/authors"
-              className="text-gray-300 hover:text-primary transition-colors py-2"
+              className="text-gray-300 hover:text-neon-purple transition-colors py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               Authors
             </Link>
             <Link
               href="/categories"
-              className="text-gray-300 hover:text-primary transition-colors py-2"
+              className="text-gray-300 hover:text-neon-cyan transition-colors py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               Categories
             </Link>
             <Link
               href="/tags"
-              className="text-gray-300 hover:text-primary transition-colors py-2"
+              className="text-gray-300 hover:text-neon-blue transition-colors py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               Tags
@@ -236,7 +233,7 @@ export function Header() {
                     setAuthModalOpen(true);
                     setMobileMenuOpen(false);
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-neon-purple/30"
                 >
                   Sign In
                 </button>
@@ -246,7 +243,7 @@ export function Header() {
                     setAuthModalOpen(true);
                     setMobileMenuOpen(false);
                   }}
-                  className="flex-1 px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg font-semibold transition-colors"
+                  className="flex-1 px-4 py-2 bg-neon-pink hover:bg-pink-600 rounded-lg font-semibold transition-all duration-300 shadow-glow-pink"
                 >
                   Sign Up
                 </button>

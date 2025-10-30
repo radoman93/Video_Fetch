@@ -5,9 +5,17 @@ import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Header } from '@/components/Header';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { VideoPlayerWithAds } from '@/components/VideoPlayerWithAds';
 import { VideoInfo } from '@/components/VideoInfo';
 import { RelatedVideos } from '@/components/RelatedVideos';
 import { useEffect, useState } from 'react';
+import {
+  ExoClickPopunder,
+  ResponsiveBanner,
+  RectangleBanner,
+  AdSpacer,
+  ExoClickNative,
+} from '@/components/ads';
 
 export default function VideoPage() {
   const params = useParams();
@@ -75,28 +83,68 @@ export default function VideoPage() {
     <>
       <Header />
       <main className="container mx-auto px-4 py-8">
+        {/* Popunder Ad - Triggers on first click */}
+        <ExoClickPopunder trigger="click" />
+
+        {/* Top Banner Ad (728x90 Leaderboard) */}
+        <ResponsiveBanner className="mb-6" />
+        <AdSpacer size="sm" />
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Video Player */}
-            <VideoPlayer
+            {/* Video Player with Pre-roll Ad */}
+            <VideoPlayerWithAds
               videoUrl={video.video_url}
               thumbnailUrl={video.thumbnail_url}
               onPlay={handlePlay}
+              enablePreroll={true}
             />
+
+            {/* Banner Ad Below Player (300x250) */}
+            <div className="flex justify-center">
+              <RectangleBanner />
+            </div>
 
             {/* Video Info */}
             <VideoInfo video={video} />
+
+            {/* Mid-content Banner Ad (728x90) - Desktop only */}
+            <div className="hidden lg:block">
+              <AdSpacer size="md" />
+              <ResponsiveBanner />
+            </div>
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
+            {/* Sidebar Banner Ad (300x250) - Desktop only */}
+            <div className="hidden lg:block">
+              <RectangleBanner />
+              <AdSpacer size="md" />
+            </div>
+
+            {/* Native Ad in Sidebar */}
+            <ExoClickNative />
+            <AdSpacer size="sm" />
+
+            {/* Related Videos */}
             <RelatedVideos
               videos={relatedVideos || []}
               loading={relatedLoading}
             />
+
+            {/* Bottom Sidebar Banner */}
+            <div className="hidden lg:block">
+              <AdSpacer size="md" />
+              <RectangleBanner />
+            </div>
           </div>
         </div>
+
+        {/* Bottom Page Banner (728x90) */}
+        <AdSpacer size="lg" />
+        <ResponsiveBanner className="mt-8" />
       </main>
     </>
   );

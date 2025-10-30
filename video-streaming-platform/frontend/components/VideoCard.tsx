@@ -13,7 +13,7 @@ export function VideoCard({ video, compact = false }: VideoCardProps) {
     return (
       <Link href={`/videos/${video.id}`} className="group flex gap-3">
         {/* Compact Thumbnail */}
-        <div className="relative w-40 aspect-video bg-dark-100 rounded-lg overflow-hidden flex-shrink-0">
+        <div className="relative w-40 aspect-video bg-dark-100 rounded-lg overflow-hidden flex-shrink-0 border border-neon-purple/20 group-hover:border-neon-pink/50 transition-all duration-300">
           {video.thumbnail_url ? (
             <Image
               src={video.thumbnail_url}
@@ -36,7 +36,7 @@ export function VideoCard({ video, compact = false }: VideoCardProps) {
             </div>
           )}
           {video.quality && (
-            <div className="absolute top-1 left-1 bg-pink-600 px-1.5 py-0.5 rounded text-xs font-semibold">
+            <div className="absolute top-1 left-1 bg-neon-pink px-1.5 py-0.5 rounded text-xs font-semibold shadow-glow-pink">
               {video.quality.toUpperCase()}
             </div>
           )}
@@ -44,7 +44,7 @@ export function VideoCard({ video, compact = false }: VideoCardProps) {
 
         {/* Compact Info */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors mb-1">
+          <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-neon-pink transition-colors mb-1">
             {video.title}
           </h3>
           {video.author && (
@@ -59,7 +59,7 @@ export function VideoCard({ video, compact = false }: VideoCardProps) {
   }
   return (
     <Link href={`/videos/${video.id}`} className="group">
-      <div className="card">
+      <div className="card border border-neon-purple/20 hover:border-neon-pink/50 hover:shadow-glow-pink transition-all duration-300">
         {/* Thumbnail */}
         <div className="relative aspect-video bg-dark-100">
           {video.thumbnail_url ? (
@@ -103,14 +103,14 @@ export function VideoCard({ video, compact = false }: VideoCardProps) {
 
           {/* Quality Badge */}
           {video.quality && (
-            <div className="absolute top-2 left-2 badge badge-hd">
+            <div className="absolute top-2 left-2 badge badge-hd shadow-glow-pink">
               {video.quality.toUpperCase()}
             </div>
           )}
 
           {/* Featured Badge */}
           {video.is_featured && (
-            <div className="absolute top-2 right-2 badge badge-featured">
+            <div className="absolute top-2 right-2 badge badge-featured shadow-glow-cyan">
               FEATURED
             </div>
           )}
@@ -118,14 +118,14 @@ export function VideoCard({ video, compact = false }: VideoCardProps) {
 
         {/* Video Info */}
         <div className="p-4">
-          <h3 className="font-semibold text-white mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+          <h3 className="font-semibold text-white mb-2 line-clamp-2 group-hover:text-neon-pink transition-all duration-300">
             {video.title}
           </h3>
 
           {video.author && (
             <Link
               href={`/authors/${video.author.slug}`}
-              className="text-sm text-gray-400 hover:text-primary transition-colors block mb-1"
+              className="text-sm text-gray-400 hover:text-neon-purple transition-colors block mb-1"
               onClick={(e) => e.stopPropagation()}
             >
               {video.author.name}

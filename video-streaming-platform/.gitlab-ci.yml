@@ -1,0 +1,250 @@
+# GitLab CI/CD Pipeline Configuration
+# Automated deployment for Frontend (Cloudflare Pages) and Backend (Windows VPS)
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  # Pipeline configuration
+  GIT_DEPTH: 10
+  FF_USE_FASTZIP: "true"
+
+# ========================================
+# CI/CD Tests (Run on all branches)
+# ========================================
+
+lint:frontend:
+  stage: test
+  image: node:20-alpine
+  before_script:
+    - cd frontend
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run lint
+    - npx tsc --noEmit
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/.npm
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+lint:backend:
+  stage: test
+  image: node:20-alpine
+  before_script:
+    - cd backend
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run lint
+    - npx tsc --noEmit
+    - npm run build
+  cache:
+    key:
+      files:
+        - backend/package-lock.json
+    paths:
+      - backend/.npm
+  artifacts:
+    paths:
+      - backend/dist/
+    expire_in: 1 hour
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+# ========================================
+# Frontend Deployment (Cloudflare Pages)
+# ========================================
+
+build:frontend:
+  stage: build
+  image: node:20-alpine
+  before_script:
+    - cd frontend
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/out/
+      - frontend/.next/
+    expire_in: 1 hour
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/.npm
+      - frontend/.next/cache
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+  environment:
+    name: production-frontend
+    url: https://$DOMAIN
+
+deploy:frontend:
+  stage: deploy
+  image: node:20-alpine
+  dependencies:
+    - build:frontend
+  before_script:
+    - npm install -g wrangler
+  script:
+    - cd frontend
+    - echo "Deploying to Cloudflare Pages..."
+    - wrangler pages deploy out --project-name=$CLOUDFLARE_PROJECT_NAME
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+  environment:
+    name: production-frontend
+    url: https://$DOMAIN
+    deployment_tier: production
+
+# ========================================
+# Backend Deployment (Windows VPS)
+# ========================================
+
+build:backend:
+  stage: build
+  image: node:20-alpine
+  before_script:
+    - cd backend
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - backend/dist/
+      - backend/node_modules/
+      - backend/package*.json
+    expire_in: 1 hour
+  cache:
+    key:
+      files:
+        - backend/package-lock.json
+    paths:
+      - backend/.npm
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  environment:
+    name: production-backend
+
+deploy:backend:
+  stage: deploy
+  tags:
+    - windows
+    - production
+  dependencies:
+    - build:backend
+  before_script:
+    - $ErrorActionPreference = "Stop"
+    - cd backend
+  script:
+    # Create .env file from GitLab CI/CD variables
+    - |
+      @"
+      SUPABASE_URL=$env:SUPABASE_URL
+      SUPABASE_SERVICE_KEY=$env:SUPABASE_SERVICE_KEY
+      PORT=$env:PORT
+      NODE_ENV=production
+      CORS_ORIGIN=$env:CORS_ORIGIN
+      "@ | Out-File -FilePath .env -Encoding utf8
+
+    # Restart PM2 process with zero downtime
+    - pm2 restart ecosystem.config.js --env production --update-env
+    - pm2 save
+
+    # Health check
+    - Start-Sleep -Seconds 5
+    - |
+      $response = Invoke-WebRequest -Uri "http://localhost:$env:PORT/api/health" -UseBasicParsing -TimeoutSec 10
+      if ($response.StatusCode -eq 200) {
+        Write-Host "✓ Backend health check passed"
+      } else {
+        Write-Error "✗ Backend health check failed with status code: $($response.StatusCode)"
+        exit 1
+      }
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  environment:
+    name: production-backend
+    url: https://api.$DOMAIN
+    deployment_tier: production
+
+# ========================================
+# Manual Rollback Jobs
+# ========================================
+
+rollback:frontend:
+  stage: deploy
+  image: node:20-alpine
+  script:
+    - echo "To rollback frontend, redeploy a previous version from Cloudflare Pages dashboard"
+    - echo "Or manually trigger this pipeline on a previous commit"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production-frontend
+    action: rollback
+
+rollback:backend:
+  stage: deploy
+  tags:
+    - windows
+    - production
+  script:
+    - Write-Host "Rolling back to previous version..."
+    - cd backend
+    - git log --oneline -10
+    - Write-Host "To rollback, checkout previous commit and re-run pipeline"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production-backend
+    action: rollback
+
+# ========================================
+# Scheduled Jobs (Optional)
+# ========================================
+
+# Uncomment to enable scheduled health checks
+# health-check:
+#   stage: test
+#   tags:
+#     - windows
+#     - production
+#   script:
+#     - |
+#       $frontendHealth = Invoke-WebRequest -Uri "https://$env:DOMAIN" -UseBasicParsing -TimeoutSec 10
+#       $backendHealth = Invoke-WebRequest -Uri "https://api.$env:DOMAIN/api/health" -UseBasicParsing -TimeoutSec 10
+#
+#       if ($frontendHealth.StatusCode -eq 200 -and $backendHealth.StatusCode -eq 200) {
+#         Write-Host "✓ All services healthy"
+#       } else {
+#         Write-Error "✗ Health check failed"
+#         exit 1
+#       }
+#   rules:
+#     - if: '$CI_PIPELINE_SOURCE == "schedule"'

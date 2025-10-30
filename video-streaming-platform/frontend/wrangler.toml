@@ -1,0 +1,22 @@
+# Cloudflare Pages Configuration for Next.js Application
+
+name = "footvault-frontend"
+compatibility_date = "2024-01-01"
+
+# Pages configuration
+pages_build_output_dir = "out"
+
+[env.production]
+name = "footvault-frontend"
+routes = [
+  { pattern = "yourdomain.com", custom_domain = true },
+  { pattern = "www.yourdomain.com", custom_domain = true }
+]
+
+# Build configuration
+[build]
+command = "npm run build"
+cwd = "frontend"
+
+[build.environment]
+NODE_VERSION = "20"

@@ -1,15 +1,26 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Header } from '@/components/Header';
 import { VideoGrid } from '@/components/VideoGrid';
+import { VideoGridWithAds } from '@/components/VideoGridWithAds';
+import { Pagination } from '@/components/Pagination';
+import {
+  ExoClickPopunder,
+  ResponsiveBanner,
+  AdSpacer,
+} from '@/components/ads';
 
-export default function TagPage() {
+function TagPageContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const slug = params.slug as string;
+  const page = parseInt(searchParams.get('page') || '1');
 
   const { data: tag, isLoading: tagLoading } = useQuery({
     queryKey: ['tag', slug],
@@ -17,8 +28,8 @@ export default function TagPage() {
   });
 
   const { data: videos, isLoading: videosLoading } = useQuery({
-    queryKey: ['videos', 'tag', slug],
-    queryFn: () => api.videos.getAll({ tag_slug: slug, page_size: 24 }),
+    queryKey: ['videos', 'tag', slug, page],
+    queryFn: () => api.videos.getAll({ tag_slug: slug, page, page_size: 24 }),
     enabled: !!tag,
   });
 
@@ -34,40 +45,45 @@ export default function TagPage() {
     enabled: !!tag,
   });
 
+  const goToPage = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', newPage.toString());
+    router.push(`/tags/${slug}?${params.toString()}`);
+  };
+
   if (tagLoading) {
     return (
-      <>
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-16 bg-gray-800 rounded-lg" />
-            <div className="h-8 bg-gray-800 rounded w-1/2" />
-          </div>
-        </main>
-      </>
+      <main className="container mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-16 bg-gray-800 rounded-lg" />
+          <div className="h-8 bg-gray-800 rounded w-1/2" />
+        </div>
+      </main>
     );
   }
 
   if (!tag) {
     return (
-      <>
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="text-center py-12">
-            <h1 className="text-2xl font-bold mb-4">Tag not found</h1>
-            <p className="text-gray-400">
-              The tag you're looking for doesn't exist.
-            </p>
-          </div>
-        </main>
-      </>
+      <main className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold mb-4">Tag not found</h1>
+          <p className="text-gray-400">
+            The tag you're looking for doesn't exist.
+          </p>
+        </div>
+      </main>
     );
   }
 
   return (
-    <>
-      <Header />
-      <main className="container mx-auto px-4 py-8">
+    <main className="container mx-auto px-4 py-8">
+        {/* Popunder Ad - Triggers on page entry */}
+        <ExoClickPopunder trigger="immediate" />
+
+        {/* Top Banner Ad (728x90 Leaderboard) */}
+        <ResponsiveBanner className="mb-6" />
+        <AdSpacer size="md" />
+
         {/* Tag Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">#{tag.name}</h1>
@@ -97,7 +113,7 @@ export default function TagPage() {
           <h2 className="text-2xl font-bold mb-6">
             Videos tagged with #{tag.name}
           </h2>
-          <VideoGrid videos={videos?.items || []} loading={videosLoading} />
+          <VideoGridWithAds videos={videos?.items || []} loading={videosLoading} adFrequency={5} />
 
           {!videosLoading && videos && videos.items.length === 0 && (
             <div className="text-center py-12">
@@ -106,8 +122,45 @@ export default function TagPage() {
               </p>
             </div>
           )}
+
+          {/* Pagination */}
+          {videos && videos.total > 0 && (
+            <>
+              <div className="mt-6 text-center text-gray-400">
+                Showing {videos.items.length} of {videos.total} videos
+              </div>
+              <Pagination
+                currentPage={page}
+                totalPages={videos.total_pages}
+                hasNext={videos.has_next}
+                hasPrev={videos.has_prev}
+                onPageChange={goToPage}
+              />
+            </>
+          )}
         </div>
-      </main>
+
+        {/* Bottom Banner Ad (728x90 Leaderboard) */}
+        <AdSpacer size="lg" />
+        <ResponsiveBanner className="mt-8" />
+    </main>
+  );
+}
+
+export default function TagPage() {
+  return (
+    <>
+      <Header />
+      <Suspense fallback={
+        <main className="container mx-auto px-4 py-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-16 bg-gray-800 rounded-lg" />
+            <div className="h-8 bg-gray-800 rounded w-1/2" />
+          </div>
+        </main>
+      }>
+        <TagPageContent />
+      </Suspense>
     </>
   );
 }

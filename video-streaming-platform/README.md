@@ -846,3 +846,86 @@ All code is production-ready. All documentation is complete. All features are te
 **Built with ❤️ using modern web technologies**
 
 *For deployment instructions, see the [Deployment](#-deployment) section above.*
+
+---
+
+## 🔄 CI/CD Pipeline (NEW!)
+
+### Automated Deployment System
+
+This platform now includes a complete CI/CD pipeline for automated deployments!
+
+#### Architecture
+
+```
+GitHub Repository
+       │
+       ├─> Push to main (frontend changes)
+       │   └─> GitHub Actions → Cloudflare Pages → yourdomain.com
+       │
+       └─> Push to main (backend changes)
+           └─> GitHub Actions → Windows VPS (PM2) → api.yourdomain.com
+```
+
+#### Features
+
+✅ **Automated Frontend Deployment** to Cloudflare Pages
+✅ **Automated Backend Deployment** to Windows VPS with PM2
+✅ **Continuous Integration** - Linting and type checking on PRs
+✅ **Zero-Downtime Deployments** - PM2 cluster mode
+✅ **Environment Management** - Separate local and production configs
+✅ **Health Checks** - Automatic verification after deployment
+
+#### Quick Setup
+
+1. **Set up GitHub Secrets** (Settings → Secrets → Actions):
+   ```
+   CLOUDFLARE_API_TOKEN
+   CLOUDFLARE_ACCOUNT_ID
+   NEXT_PUBLIC_API_URL
+   NEXT_PUBLIC_SUPABASE_URL
+   NEXT_PUBLIC_SUPABASE_ANON_KEY
+   SUPABASE_URL
+   SUPABASE_SERVICE_KEY
+   PORT
+   CORS_ORIGIN
+   ```
+
+2. **Set up Windows VPS** (production backend):
+   ```powershell
+   cd backend
+   .\scripts\windows-setup.ps1
+   ```
+
+3. **Configure Cloudflare Pages** (frontend hosting)
+   - Follow [docs/CLOUDFLARE_SETUP.md](./docs/CLOUDFLARE_SETUP.md)
+
+4. **Push to deploy!**
+   ```bash
+   git add .
+   git commit -m "Deploy to production"
+   git push origin main
+   # Automated deployment triggers!
+   ```
+
+#### Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Local Setup](./docs/LOCAL_SETUP.md) | Set up local development environment |
+| [Cloudflare Setup](./docs/CLOUDFLARE_SETUP.md) | Configure Cloudflare Pages, DNS, SSL |
+| [Deployment Guide](./docs/DEPLOYMENT.md) | Deploy to production, rollback, monitoring |
+
+#### Workflows
+
+- **`.github/workflows/deploy-frontend.yml`** - Auto-deploy frontend to Cloudflare Pages
+- **`.github/workflows/deploy-backend.yml`** - Auto-deploy backend to Windows VPS
+- **`.github/workflows/ci-checks.yml`** - Run linting and tests on PRs
+
+#### Deployment Timeline
+
+- **Frontend:** 3-5 minutes from push to live
+- **Backend:** 2-3 minutes from push to live
+- **CI Checks:** 2-4 minutes for linting and type checking
+
+🚀 **Push to main = Automatic deployment to production!**
